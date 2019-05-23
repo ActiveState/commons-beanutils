@@ -14,38 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.beanutils.bugs;
+package org.apache.commons.beanutils2.bugs;
 
 import java.io.Serializable;
 import java.util.Map;
+
+import org.apache.commons.beanutils2.BeanUtils;
+import org.apache.commons.beanutils2.BeanUtilsBean;
+import org.apache.commons.beanutils2.PropertyUtilsBean;
+import org.apache.commons.beanutils2.SuppressPropertiesBeanIntrospector;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 /**
- * Beanutils's describe() method cannot determine reader methods
- * for anonymous class - see Jira issue# BEANUTILS-157.
- * <p />
- * See https://issues.apache.org/jira/browse/BEANUTILS-157
- * <p />
+ * Beanutils's describe() method cannot determine reader methods for anonymous
+ * class - see Jira issue# BEANUTILS-157.
  *
- * @version $Revision$ $Date$
+ * @see <a
+ *      href="https://issues.apache.org/jira/browse/BEANUTILS-157">https://issues.apache.org/jira/browse/BEANUTILS-157<a/>
  */
 public class Jira157TestCase extends TestCase {
 
-    private Log log = LogFactory.getLog(Jira157TestCase.class);
+    private final Log log = LogFactory.getLog(Jira157TestCase.class);
 
     /**
      * Create a test case with the specified name.
      *
      * @param name The name of the test
      */
-    public Jira157TestCase(String name) {
+    public Jira157TestCase(final String name) {
         super(name);
     }
 
@@ -54,7 +55,7 @@ public class Jira157TestCase extends TestCase {
      *
      * @param args Arguments
      */
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         junit.textui.TestRunner.run(suite());
     }
 
@@ -64,7 +65,7 @@ public class Jira157TestCase extends TestCase {
      * @return a test suite
      */
     public static Test suite() {
-        return (new TestSuite(Jira157TestCase.class));
+        return new TestSuite(Jira157TestCase.class);
     }
 
     /**
@@ -72,8 +73,13 @@ public class Jira157TestCase extends TestCase {
      *
      * @throws java.lang.Exception
      */
+    @Override
     protected void setUp() throws Exception {
         super.setUp();
+        
+        BeanUtilsBean custom = new BeanUtilsBean();
+    	custom.getPropertyUtils().removeBeanIntrospector(SuppressPropertiesBeanIntrospector.SUPPRESS_CLASS);
+    	BeanUtilsBean.setInstance(custom);
     }
 
     /**
@@ -81,6 +87,7 @@ public class Jira157TestCase extends TestCase {
      *
      * @throws java.lang.Exception
      */
+    @Override
     protected void tearDown() throws Exception {
         super.tearDown();
     }
@@ -92,18 +99,22 @@ public class Jira157TestCase extends TestCase {
      * See Jira issue# BEANUTILS-157.
      */
     public void testIssue_BEANUTILS_157_BeanUtils_Describe_Serializable() {
-        Object bean = new Serializable() {
+        final Object bean = new Serializable() {
+            private static final long serialVersionUID = 1L;
+
+            @SuppressWarnings("unused")
             public String getX() {
                 return "x-value";
             }
+            @SuppressWarnings("unused")
             public String getY() {
                 return "y-value";
-            }             
+            }
         };
-        Map result = null;
+        Map<String, String> result = null;
         try {
             result = BeanUtils.describe(bean);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             log.error("Describe Serializable: " + t.getMessage(), t);
             fail("Describe Serializable Threw exception: " + t);
         }
@@ -118,18 +129,20 @@ public class Jira157TestCase extends TestCase {
      * See Jira issue# BEANUTILS-157.
      */
     public void testIssue_BEANUTILS_157_BeanUtils_Describe_Interface() {
-        Object bean = new XY() {
+        final Object bean = new XY() {
+            @Override
             public String getX() {
                 return "x-value";
             }
+            @Override
             public String getY() {
                 return "y-value";
-            }             
+            }
         };
-        Map result = null;
+        Map<String, String> result = null;
         try {
             result = BeanUtils.describe(bean);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             log.error("Describe Interface: " + t.getMessage(), t);
             fail("Describe Interface Threw exception: " + t);
         }
@@ -148,11 +161,11 @@ public class Jira157TestCase extends TestCase {
      * See Jira issue# BEANUTILS-157.
      */
     public void testIssue_BEANUTILS_157_BeanUtils_Describe_Bean() {
-        Object bean = new FooBar();
-        Map result = null;
+        final Object bean = new FooBar();
+        Map<String, String> result = null;
         try {
             result = BeanUtils.describe(bean);
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             log.error("Describe Bean: " + t.getMessage(), t);
             fail("Describe Bean Threw exception: " + t);
         }
@@ -165,12 +178,13 @@ public class Jira157TestCase extends TestCase {
     public static interface XY {
         String getX();
         String getY();
-    };
+    }
 
     public static class FooBar {
         String getPackageFoo() {
             return "Package Value";
         }
+        @SuppressWarnings("unused")
         private String getPrivateFoo() {
             return "PrivateFoo Value";
         }
@@ -180,5 +194,5 @@ public class Jira157TestCase extends TestCase {
         public String getPublicFoo() {
             return "PublicFoo Value";
         }
-    };
+    }
 }
