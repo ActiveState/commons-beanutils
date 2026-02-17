@@ -15,13 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.commons.beanutils2;
+package org.apache.commons.beanutils;
 
 
-import java.beans.IndexedPropertyDescriptor;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
+import java.beans.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -29,10 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.commons.beanutils2.expression.DefaultResolver;
-import org.apache.commons.beanutils2.expression.Resolver;
+import org.apache.commons.beanutils.expression.DefaultResolver;
+import org.apache.commons.beanutils.expression.Resolver;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -111,7 +107,7 @@ public class PropertyUtilsBean {
      * introspected, keyed by the java.lang.Class of this object.
      */
     private WeakFastHashMap<Class<?>, BeanIntrospectionData> descriptorsCache = null;
-    private WeakFastHashMap<Class<?>, Map> mappedDescriptorsCache = null;
+    private WeakFastHashMap mappedDescriptorsCache = null;
 
     /** An empty object array */
     private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
@@ -119,21 +115,16 @@ public class PropertyUtilsBean {
     /** Log instance */
     private final Log log = LogFactory.getLog(PropertyUtilsBean.class);
 
-    /** The list with BeanIntrospector objects. */
-    private final List<BeanIntrospector> introspectors;
 
     // ---------------------------------------------------------- Constructors
 
     /** Base constructor */
     public PropertyUtilsBean() {
-        descriptorsCache = new WeakFastHashMap<>();
+        descriptorsCache = new WeakFastHashMap();
         descriptorsCache.setFast(true);
-        mappedDescriptorsCache = new WeakFastHashMap<>();
+        mappedDescriptorsCache = new WeakFastHashMap();
         mappedDescriptorsCache.setFast(true);
-        introspectors = new CopyOnWriteArrayList<>();
-        resetBeanIntrospectors();
     }
-
 
     // --------------------------------------------------------- Public Methods
 
@@ -176,46 +167,7 @@ public class PropertyUtilsBean {
         }
     }
 
-    /**
-     * Resets the {@link BeanIntrospector} objects registered at this instance. After this
-     * method was called, only the default {@code BeanIntrospector} is registered.
-     *
-     * @since 1.9
-     */
-    public final void resetBeanIntrospectors() {
-        introspectors.clear();
-        introspectors.add(DefaultBeanIntrospector.INSTANCE);
-        introspectors.add(SuppressPropertiesBeanIntrospector.SUPPRESS_CLASS);
-    }
 
-    /**
-     * Adds a <code>BeanIntrospector</code>. This object is invoked when the
-     * property descriptors of a class need to be obtained.
-     *
-     * @param introspector the <code>BeanIntrospector</code> to be added (must
-     *        not be <b>null</b>
-     * @throws IllegalArgumentException if the argument is <b>null</b>
-     * @since 1.9
-     */
-    public void addBeanIntrospector(final BeanIntrospector introspector) {
-        if (introspector == null) {
-            throw new IllegalArgumentException(
-                    "BeanIntrospector must not be null!");
-        }
-        introspectors.add(introspector);
-    }
-
-    /**
-     * Removes the specified <code>BeanIntrospector</code>.
-     *
-     * @param introspector the <code>BeanIntrospector</code> to be removed
-     * @return <b>true</b> if the <code>BeanIntrospector</code> existed and
-     *         could be removed, <b>false</b> otherwise
-     * @since 1.9
-     */
-    public boolean removeBeanIntrospector(final BeanIntrospector introspector) {
-        return introspectors.remove(introspector);
-    }
 
     /**
      * Clear any cached property descriptors information for all classes
@@ -711,7 +663,7 @@ public class PropertyUtilsBean {
         }
 
         // Look up any cached descriptors for this bean class
-        return mappedDescriptorsCache.get(beanClass);
+        return (Map<Class<?>, Map>) mappedDescriptorsCache.get(beanClass);
 
     }
 
@@ -905,8 +857,7 @@ public class PropertyUtilsBean {
      * @throws NoSuchMethodException if an accessor method for this
      *  propety cannot be found
      */
-    public PropertyDescriptor getPropertyDescriptor(Object bean,
-                                                           String name)
+    public PropertyDescriptor getPropertyDescriptor(Object bean, String name)
             throws IllegalAccessException, InvocationTargetException,
             NoSuchMethodException {
 
@@ -916,6 +867,10 @@ public class PropertyUtilsBean {
         if (name == null) {
             throw new IllegalArgumentException("No name specified for bean class '" +
                     bean.getClass() + "'");
+        }
+
+        if (name.startsWith("class.") || name.equals("class")) {
+            return null;
         }
 
         // Resolve nested references
@@ -940,10 +895,13 @@ public class PropertyUtilsBean {
             return null;
         }
 
-        final BeanIntrospectionData data = getIntrospectionData(bean.getClass());
-        PropertyDescriptor result = data.getDescriptor(name);
-        if (result != null) {
-            return result;
+        PropertyDescriptor[] descriptors = getPropertyDescriptors(bean);
+        if (descriptors != null) {
+            for (int i = 0; i < descriptors.length; i++) {
+                if (name.equals(descriptors[i].getName())) {
+                    return (descriptors[i]);
+                }
+            }
         }
 
         Map mappedDescriptors =
@@ -952,7 +910,7 @@ public class PropertyUtilsBean {
             mappedDescriptors = new ConcurrentHashMap<Class<?>, Map>();
             mappedDescriptorsCache.put(bean.getClass(), mappedDescriptors);
         }
-        result = (PropertyDescriptor) mappedDescriptors.get(name);
+        PropertyDescriptor result = (PropertyDescriptor) mappedDescriptors.get(name);
         if (result == null) {
             // not found, try to create it
             try {
@@ -984,11 +942,38 @@ public class PropertyUtilsBean {
      *
      * @throws IllegalArgumentException if <code>beanClass</code> is null
      */
-    public PropertyDescriptor[]
-            getPropertyDescriptors(final Class<?> beanClass) {
+    public PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
+        if (beanClass == null) {
+            throw new IllegalArgumentException("No bean class specified");
+        }
 
-        return getIntrospectionData(beanClass).getDescriptors();
+        PropertyDescriptor[] descriptors = null;
+        descriptors = (PropertyDescriptor[]) descriptorsCache.get(beanClass);
+        if (descriptors != null) {
+            return (descriptors);
+        }
 
+        BeanInfo beanInfo = null;
+        try {
+            beanInfo = Introspector.getBeanInfo(beanClass);
+        } catch (IntrospectionException e) {
+            return (new PropertyDescriptor[0]);
+        }
+        descriptors = beanInfo.getPropertyDescriptors();
+        if (descriptors == null) {
+            descriptors = new PropertyDescriptor[0];
+        }
+
+        java.util.ArrayList list = new java.util.ArrayList(descriptors.length);
+        for (int i = 0; i < descriptors.length; i++) {
+            if (!"class".equals(descriptors[i].getName())) {
+                list.add(descriptors[i]);
+            }
+        }
+        descriptors = (PropertyDescriptor[]) list.toArray(new PropertyDescriptor[list.size()]);
+
+        descriptorsCache.put(beanClass, descriptors);
+        return (descriptors);
     }
 
     /**
@@ -1301,9 +1286,7 @@ public class PropertyUtilsBean {
      * @since 1.9.1
      */
     public Method getWriteMethod(final Class<?> clazz, final PropertyDescriptor descriptor) {
-        final BeanIntrospectionData data = getIntrospectionData(clazz);
-        return MethodUtils.getAccessibleMethod(clazz,
-                data.getWriteMethod(clazz, descriptor));
+        return MethodUtils.getAccessibleMethod(clazz, descriptor.getWriteMethod());
     }
 
 
@@ -2186,51 +2169,6 @@ public class PropertyUtilsBean {
             throw e;
 
         }
-    }
-
-    /**
-     * Obtains the {@code BeanIntrospectionData} object describing the specified bean
-     * class. This object is looked up in the internal cache. If necessary, introspection
-     * is performed now on the affected bean class, and the results object is created.
-     *
-     * @param beanClass the bean class in question
-     * @return the {@code BeanIntrospectionData} object for this class
-     * @throws IllegalArgumentException if the bean class is <b>null</b>
-     */
-    private BeanIntrospectionData getIntrospectionData(final Class<?> beanClass) {
-        if (beanClass == null) {
-            throw new IllegalArgumentException("No bean class specified");
-        }
-
-        // Look up any cached information for this bean class
-        BeanIntrospectionData data = descriptorsCache.get(beanClass);
-        if (data == null) {
-            data = fetchIntrospectionData(beanClass);
-            descriptorsCache.put(beanClass, data);
-        }
-
-        return data;
-    }
-
-    /**
-     * Performs introspection on the specified class. This method invokes all {@code BeanIntrospector} objects that were
-     * added to this instance.
-     *
-     * @param beanClass the class to be inspected
-     * @return a data object with the results of introspection
-     */
-    private BeanIntrospectionData fetchIntrospectionData(final Class<?> beanClass) {
-        final DefaultIntrospectionContext ictx = new DefaultIntrospectionContext(beanClass);
-
-        for (final BeanIntrospector bi : introspectors) {
-            try {
-                bi.introspect(ictx);
-            } catch (final IntrospectionException iex) {
-                log.error("Exception during introspection", iex);
-            }
-        }
-
-        return new BeanIntrospectionData(ictx.getPropertyDescriptors());
     }
 
     /**
