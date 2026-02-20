@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.beanutils.expression.DefaultResolver;
 import org.apache.commons.beanutils.expression.Resolver;
+import org.apache.commons.collections.FastHashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -656,15 +657,12 @@ public class PropertyUtilsBean {
      * @param beanClass Bean class to be introspected
      * @return the mapped property descriptors
      */
-    Map<Class<?>, Map> getMappedPropertyDescriptors(final Class<?> beanClass) {
-
+    FastHashMap getMappedPropertyDescriptors(final Class<?> beanClass) {
         if (beanClass == null) {
             return null;
         }
-
         // Look up any cached descriptors for this bean class
-        return (Map<Class<?>, Map>) mappedDescriptorsCache.get(beanClass);
-
+        return (FastHashMap) mappedDescriptorsCache.get(beanClass);
     }
 
 
@@ -676,13 +674,11 @@ public class PropertyUtilsBean {
      * @param bean Bean to be introspected
      * @return the mapped property descriptors
      */
-    Map getMappedPropertyDescriptors(final Object bean) {
-
+    FastHashMap getMappedPropertyDescriptors(final Object bean) {
         if (bean == null) {
             return null;
         }
         return getMappedPropertyDescriptors(bean.getClass());
-
     }
 
 
@@ -904,13 +900,14 @@ public class PropertyUtilsBean {
             }
         }
 
-        Map mappedDescriptors =
-                getMappedPropertyDescriptors(bean);
+        FastHashMap mappedDescriptors = getMappedPropertyDescriptors(bean);
         if (mappedDescriptors == null) {
-            mappedDescriptors = new ConcurrentHashMap<Class<?>, Map>();
+            mappedDescriptors = new FastHashMap();
+            mappedDescriptors.setFast(true);
             mappedDescriptorsCache.put(bean.getClass(), mappedDescriptors);
         }
         PropertyDescriptor result = (PropertyDescriptor) mappedDescriptors.get(name);
+
         if (result == null) {
             // not found, try to create it
             try {
