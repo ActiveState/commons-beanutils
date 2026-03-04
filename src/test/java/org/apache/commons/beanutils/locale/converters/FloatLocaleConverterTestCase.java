@@ -269,7 +269,7 @@ public class FloatLocaleConverterTestCase extends BaseLocaleConverterTestCase {
     public void testFloatLimits() {
 
         converter = new FloatLocaleConverter(defaultLocale, defaultDecimalPattern);
-        DecimalFormat fmt = new DecimalFormat("#.#############################################################");
+        DecimalFormat fmt = new DecimalFormat("#.#############################################################", new java.text.DecimalFormatSymbols(defaultLocale));
 
         assertEquals(new Float(-0.12), converter.convert("-0.12"));
         assertEquals("Positive Float.MAX_VALUE", new Float(Float.MAX_VALUE), converter.convert(fmt.format(Float.MAX_VALUE)));

@@ -69,6 +69,7 @@ public class LocaleConvertUtilsTestCase extends TestCase {
      */
     public void setUp() {
 
+        java.util.Locale.setDefault(java.util.Locale.US);
         LocaleConvertUtils.deregister();
 
         NumberFormat nf = DecimalFormat.getNumberInstance();
