@@ -188,6 +188,10 @@ public class PropertyUtilsBean {
     public final void resetBeanIntrospectors() {
         introspectors.clear();
         introspectors.add(DefaultBeanIntrospector.INSTANCE);
+        // CVE-2014-0114: suppress the "class" property by default so generic
+        // property-path traversal (e.g. Struts 1 ActionForm population from
+        // request parameters) cannot reach getClass().getClassLoader().
+        introspectors.add(SuppressPropertiesBeanIntrospector.SUPPRESS_CLASS);
     }
 
     /**

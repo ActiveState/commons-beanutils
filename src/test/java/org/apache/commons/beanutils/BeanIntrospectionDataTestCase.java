@@ -42,6 +42,10 @@ public class BeanIntrospectionDataTestCase extends TestCase {
      */
     private static PropertyDescriptor[] fetchDescriptors() {
         PropertyUtilsBean pub = new PropertyUtilsBean();
+        // CVE-2014-0114: this test asserts a "class" descriptor exists with no
+        // write method, which the new default suppression now removes; opt out
+        // here so this pre-existing test keeps exercising its original scenario.
+        pub.removeBeanIntrospector(SuppressPropertiesBeanIntrospector.SUPPRESS_CLASS);
         pub.addBeanIntrospector(new FluentPropertyBeanIntrospector());
         return pub.getPropertyDescriptors(BEAN_CLASS);
     }

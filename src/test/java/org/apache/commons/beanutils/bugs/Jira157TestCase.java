@@ -24,6 +24,8 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.beanutils.BeanUtilsBean;
+import org.apache.commons.beanutils.SuppressPropertiesBeanIntrospector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -74,6 +76,12 @@ public class Jira157TestCase extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+        // CVE-2014-0114: this pre-existing test asserts describe() surfaces a
+        // "class" entry; opt this instance out of the new default suppression
+        // so it keeps exercising its original BEANUTILS-157 scenario.
+        BeanUtilsBean custom = new BeanUtilsBean();
+        custom.getPropertyUtils().removeBeanIntrospector(SuppressPropertiesBeanIntrospector.SUPPRESS_CLASS);
+        BeanUtilsBean.setInstance(custom);
     }
 
     /**
